@@ -10,7 +10,6 @@ export const gameAuth = async (c: Context<{ Bindings: Bindings }>, next: Next) =
 
   const db = getDb(c.env)
   
-  // Cek apakah Game Key valid
   const result = await db.execute({
     sql: 'SELECT id FROM games WHERE api_key = ?',
     args: [apiKey]
@@ -20,7 +19,6 @@ export const gameAuth = async (c: Context<{ Bindings: Bindings }>, next: Next) =
     return c.json({ error: 'Invalid Game Key' }, 403)
   }
 
-  // Simpan game_id ke context biar bisa dipakai di controller
   c.set('gameId', result.rows[0].id)
 
   await next()

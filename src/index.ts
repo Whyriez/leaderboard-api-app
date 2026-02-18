@@ -2,7 +2,6 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { createClient } from '@libsql/client/web'
 
-// --- TIPE DATA ---
 type Bindings = {
   TURSO_DATABASE_URL: string
   TURSO_AUTH_TOKEN: string
