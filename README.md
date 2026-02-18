@@ -34,7 +34,7 @@ Pastikan Anda sudah menginstal:
 ### 2. Clone & Install
 
 ```bash
-git clone [https://github.com/username/leaderboard-api.git](https://github.com/username/leaderboard-api.git)
+git clone https://github.com/Whyriez/leaderboard-api-app.git
 cd leaderboard-api
 npm install
 ```
