@@ -392,7 +392,10 @@ app.get('/v1/boards/:slug', async (c) => {
   const db = getDb(c.env)
   const apiKey = c.req.header('x-game-key')
   const slug = c.req.param('slug')
-  const limit = c.req.query('limit') || '50'
+  
+  // Ambil parameter dari Unity
+  const limit = c.req.query('limit') || '100'
+  const playerId = c.req.query('playerId') // ID Device player saat ini
 
   if (!apiKey) return c.json({ error: 'Missing x-game-key' }, 401)
 
@@ -415,6 +418,7 @@ app.get('/v1/boards/:slug', async (c) => {
     const boardId = boardRes.rows[0].id
     const orderMode = boardRes.rows[0].order_mode
 
+    // 1. AMBIL TOP X (Misal: 100)
     const query = `
       SELECT 
         p.external_id as id,
@@ -428,22 +432,51 @@ app.get('/v1/boards/:slug', async (c) => {
       ORDER BY e.score ${orderMode}
       LIMIT ?
     `
+    const result = await db.execute({ sql: query, args: [boardId, limit] })
 
-    const result = await db.execute({
-      sql: query,
-      args: [boardId, limit]
-    })
-
-    const formatted = result.rows.map((row, index) => ({
+    const formattedTop = result.rows.map((row, index) => ({
       rank: index + 1,
       id: row.id,
       username: row.username,
-      score: row.score,
-      avatarUrl: row.avatar_url,
-      metadata: row.metadata ? JSON.parse(row.metadata as string) : {}
+      score: row.score
     }))
 
-    return c.json({ success: true, data: formatted })
+    // 2. CARI POSISI SPESIFIK PLAYER (Jika dia minta)
+    let playerEntry = null;
+    if (playerId) {
+      // Cek apakah player sudah ada di dalam Top 100
+      playerEntry = formattedTop.find(p => p.id === playerId);
+
+      // Jika TIDAK ADA di Top 100, hitung manual posisinya di database
+      if (!playerEntry) {
+        const internalPlayerId = `${gameId}_${playerId}`;
+        const pRes = await db.execute({
+          sql: `SELECT p.display_name, e.score FROM entries e JOIN players p ON e.player_id = p.id WHERE e.board_id = ? AND e.player_id = ?`,
+          args: [boardId, internalPlayerId]
+        });
+
+        if (pRes.rows.length > 0) {
+          const pScore = Number(pRes.rows[0].score);
+          const op = orderMode === 'DESC' ? '>' : '<';
+          
+          // Hitung ada berapa orang yang skornya lebih besar dari player ini
+          const rankRes = await db.execute({
+            sql: `SELECT COUNT(*) as rank_above FROM entries WHERE board_id = ? AND score ${op} ?`,
+            args: [boardId, pScore]
+          });
+          
+          playerEntry = {
+            rank: Number(rankRes.rows[0].rank_above) + 1,
+            id: playerId,
+            username: pRes.rows[0].display_name,
+            score: pScore
+          }
+        }
+      }
+    }
+
+    // Kembalikan Top 100 + Data spesifik player
+    return c.json({ success: true, data: formattedTop, playerEntry: playerEntry })
 
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
