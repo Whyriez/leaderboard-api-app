@@ -257,7 +257,6 @@ app.post('/v1/start', async (c) => {
 app.post('/v1/submit', async (c) => {
   const db = getDb(c.env)
   
-  // HANYA butuh Game Key, hapus pengecekan Signature
   const apiKey = c.req.header('x-game-key')
 
   if (!apiKey) {
@@ -281,27 +280,19 @@ app.post('/v1/submit', async (c) => {
     const sessionRaw = await c.env.LEADERBOARD_SESSIONS.get(sessionToken)
     
     if (!sessionRaw) {
-      return c.json({ success: false, error: 'CHEATER DETECTED: Invalid or Expired Session Token!' }, 403)
+      // Ubah pesan error agar lebih ramah, karena bisa jadi ini karena token expired, bukan murni cheater
+      return c.json({ success: false, error: 'Invalid or Expired Session Token. Please restart the game.' }, 403)
     }
 
-    const sessionData = JSON.parse(sessionRaw)
-
-    // 2. SANITY CHECK: ANTI SPEED-HACK
-    const timeElapsed = (Date.now() - sessionData.startTime) / 1000
-    
-    const minTimeRequired = boardSlug === 'web-leaderboards' ? 0 : 15;
-
-    if (timeElapsed < minTimeRequired) {
-      return c.json({ success: false, error: 'CHEATER DETECTED: Game finished unnaturally fast!' }, 403)
-    }
-    // 3. HANGUSKAN TIKET (ANTI REPLAY-ATTACK)
+    // 2. HANGUSKAN TIKET (ANTI REPLAY-ATTACK)
+    // Tiket langsung dihapus agar 1 token hanya bisa dipakai 1x kirim skor
     await c.env.LEADERBOARD_SESSIONS.delete(sessionToken)
 
     // ==========================================
     // FASE DATABASE: SIMPAN KE TURSO
     // ==========================================
 
-    // 4. Ambil Game ID saja (Secret Key tidak perlu lagi)
+    // 3. Ambil Game ID
     const gameRes = await db.execute({
       sql: 'SELECT id FROM games WHERE api_key = ?',
       args: [apiKey]
@@ -312,10 +303,9 @@ app.post('/v1/submit', async (c) => {
     }
 
     const gameId = gameRes.rows[0].id as string
-
-    const internalPlayerId = `${gameId}_${playerId}` // Composite ID internal
+    const internalPlayerId = `${gameId}_${playerId}` 
     
-    // [KODE DI BAWAH INI TETAP SAMA PERSI DENGAN MILIKMU SEBELUMNYA]
+    // 4. Update / Insert Data Player
     await db.execute({
       sql: `
         INSERT INTO players (id, game_id, external_id, display_name, avatar_url, metadata)
@@ -336,6 +326,7 @@ app.post('/v1/submit', async (c) => {
       ]
     })
 
+    // 5. Cari Board
     const boardRes = await db.execute({
       sql: 'SELECT id, order_mode FROM boards WHERE game_id = ? AND slug = ?',
       args: [gameId, boardSlug]
@@ -352,6 +343,7 @@ app.post('/v1/submit', async (c) => {
     const boardId = board.id as string
     const isDesc = board.order_mode === 'DESC'
 
+    // 6. Cek Skor Lama
     const entryRes = await db.execute({
       sql: 'SELECT score FROM entries WHERE board_id = ? AND player_id = ?',
       args: [boardId, internalPlayerId]
@@ -368,6 +360,7 @@ app.post('/v1/submit', async (c) => {
       if (!isDesc && newScore < oldScore) shouldUpdate = true
     }
 
+    // 7. Simpan Skor Baru Jika Lebih Baik
     if (shouldUpdate) {
       await db.execute({
         sql: `
