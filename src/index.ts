@@ -209,21 +209,20 @@ admin.post('/boards', async (c) => {
 // ==========================================
 // ENDPOINT 1: SUBMIT SCORE (SECURE & ATOMIC)
 // ==========================================
-app.post('/v1/submit', async (c) => {
-  const db = getDb(c.env)
-  
-  const apiKey = c.req.header('x-game-key')
-  const clientSignature = c.req.header('x-signature')
 
-  if (!apiKey || !clientSignature) {
-    return c.json({ success: false, error: 'Missing Auth Headers (x-game-key or x-signature)' }, 401)
+app.post('/v1/start', async (c) => {
+  const db = getDb(c.env)
+  const apiKey = c.req.header('x-game-key')
+
+  // 1. Pastikan Header Dikirim
+  if (!apiKey) {
+    return c.json({ success: false, error: 'Missing Auth Header (x-game-key)' }, 401)
   }
 
   try {
-    const rawBody = await c.req.text()
-
+    // 2. Validasi Game Key ke Database Turso
     const gameRes = await db.execute({
-      sql: 'SELECT id, secret_key FROM games WHERE api_key = ?',
+      sql: 'SELECT id FROM games WHERE api_key = ?',
       args: [apiKey]
     })
 
@@ -231,24 +230,93 @@ app.post('/v1/submit', async (c) => {
       return c.json({ success: false, error: 'Invalid Game Key' }, 403)
     }
 
-    const game = gameRes.rows[0]
-    const gameId = game.id as string
-    const secretKey = game.secret_key as string
+    const gameId = gameRes.rows[0].id
 
-    const isValid = await verifySignature(secretKey, rawBody, clientSignature)
+    // 3. Generate Tiket Sesi (Token Unik)
+    const token = crypto.randomUUID()
 
-    if (!isValid) {
-      return c.json({ success: false, error: 'Invalid Signature. Data tampered or wrong secret key.' }, 403)
+    // 4. Siapkan Data Sesi
+    const sessionData = {
+      startTime: Date.now(),
+      gameId: gameId
     }
 
+    // 5. Simpan ke Cloudflare KV (TTL 1 Jam = 3600 Detik)
+    // Setelah 1 jam, Cloudflare otomatis menghapus tiket ini (bebas sampah)
+    await c.env.LEADERBOARD_SESSIONS.put(token, JSON.stringify(sessionData), { expirationTtl: 3600 })
+
+    // 6. Kirim Tiket kembali ke Game (Unity)
+    return c.json({ success: true, sessionToken: token })
+
+  } catch (e: any) {
+    console.error("Start Session Error:", e)
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+app.post('/v1/submit', async (c) => {
+  const db = getDb(c.env)
+  
+  // HANYA butuh Game Key, hapus pengecekan Signature
+  const apiKey = c.req.header('x-game-key')
+
+  if (!apiKey) {
+    return c.json({ success: false, error: 'Missing Auth Header (x-game-key)' }, 401)
+  }
+
+  try {
+    const rawBody = await c.req.text()
     const payload = JSON.parse(rawBody)
-    const { playerId, username, avatarUrl, boardSlug, score, metadata } = payload
+    
+    // 1. TERIMA SESSION TOKEN DARI UNITY
+    const { playerId, username, avatarUrl, boardSlug, score, metadata, sessionToken } = payload
 
-    if (!playerId || !boardSlug || score === undefined) {
-      return c.json({ success: false, error: 'Missing required fields (playerId, boardSlug, score)' }, 400)
+    if (!playerId || !boardSlug || score === undefined || !sessionToken) {
+      return c.json({ success: false, error: 'Missing required fields (including sessionToken)' }, 400)
     }
+
+    // ==========================================
+    // FASE WASIT: VALIDASI TIKET DI CLOUDFLARE KV
+    // ==========================================
+    const sessionRaw = await c.env.LEADERBOARD_SESSIONS.get(sessionToken)
+    
+    if (!sessionRaw) {
+      return c.json({ success: false, error: 'CHEATER DETECTED: Invalid or Expired Session Token!' }, 403)
+    }
+
+    const sessionData = JSON.parse(sessionRaw)
+
+    // 2. SANITY CHECK: ANTI SPEED-HACK
+    const timeElapsed = (Date.now() - sessionData.startTime) / 1000
+    
+    // Contoh: Game minimal butuh 15 detik untuk diselesaikan. 
+    // (Kamu bisa menyesuaikan angka ini atau mengambilnya dari konfigurasi database)
+    if (timeElapsed < 15) {
+      return c.json({ success: false, error: 'CHEATER DETECTED: Game finished unnaturally fast!' }, 403)
+    }
+
+    // 3. HANGUSKAN TIKET (ANTI REPLAY-ATTACK)
+    await c.env.LEADERBOARD_SESSIONS.delete(sessionToken)
+
+    // ==========================================
+    // FASE DATABASE: SIMPAN KE TURSO
+    // ==========================================
+
+    // 4. Ambil Game ID saja (Secret Key tidak perlu lagi)
+    const gameRes = await db.execute({
+      sql: 'SELECT id FROM games WHERE api_key = ?',
+      args: [apiKey]
+    })
+
+    if (gameRes.rows.length === 0) {
+      return c.json({ success: false, error: 'Invalid Game Key' }, 403)
+    }
+
+    const gameId = gameRes.rows[0].id as string
 
     const internalPlayerId = `${gameId}_${playerId}` // Composite ID internal
+    
+    // [KODE DI BAWAH INI TETAP SAMA PERSI DENGAN MILIKMU SEBELUMNYA]
     await db.execute({
       sql: `
         INSERT INTO players (id, game_id, external_id, display_name, avatar_url, metadata)
@@ -257,7 +325,7 @@ app.post('/v1/submit', async (c) => {
           display_name = excluded.display_name,
           avatar_url = excluded.avatar_url,
           metadata = excluded.metadata,
-          created_at = created_at -- keep original creation date
+          created_at = created_at
       `,
       args: [
         internalPlayerId, 

@@ -16,6 +16,13 @@
 	},
 	"compatibility_flags": [
 		"nodejs_compat"
+	],
+	"kv_namespaces": [
+		{
+			"binding": "LEADERBOARD_SESSIONS",
+			"id": "fbbe75140682461ea416854eed4d6ef7",
+			"remote": true
+		}
 	]
 	/**
 	 * Smart Placement

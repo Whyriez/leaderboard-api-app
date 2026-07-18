@@ -4,6 +4,7 @@ export type Bindings = {
   TURSO_DATABASE_URL: string
   TURSO_AUTH_TOKEN: string
   ADMIN_SECRET: string
+  LEADERBOARD_SESSIONS: KVNamespace
 }
 
 export const getDb = (env: Bindings) => {
