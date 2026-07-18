@@ -1,13 +1,13 @@
 # 🏆 Leaderboard API Serverless
 
-API Leaderboard berkinerja tinggi, aman, dan scalable yang dibangun menggunakan **Hono**, **Cloudflare Workers**, dan **Turso (LibSQL)**.
+API leaderboard berkinerja tinggi, aman, dan scalable yang dibangun menggunakan **Hono**, **Cloudflare Workers**, dan **Turso (LibSQL)**.
 
 Proyek ini memungkinkan Anda untuk mengelola sistem skor (leaderboard) untuk banyak game sekaligus, dengan fitur keamanan validasi signature (HMAC-SHA256) untuk mencegah kecurangan saat submit skor.
 
 ## ✨ Fitur Utama
 
 - **Serverless**: Dideploy di Cloudflare Workers (Global Low Latency).
-- **Multi-Game Support**: Satu API bisa menangani banyak game dengan `api_key` dan `secret_key` berbeda.
+- **Multi-Game Support**: Satu API bisa menangani banyak game dengan `apiKey` publik dan `secretKey` privat untuk tiap game.
 - **Secure Submission**: Menggunakan validasi HMAC-SHA256 untuk memastikan skor yang dikirim valid dan tidak diubah di tengah jalan.
 - **Atomic Updates**: Skor hanya diperbarui jika lebih baik dari sebelumnya (High Score) atau sesuai mode urutan (ASC/DESC).
 - **Metadata Support**: Bisa menyimpan data tambahan (JSON) pada player atau entry skor (misal: replay data, loadout, dll).
@@ -96,21 +96,30 @@ CREATE TABLE entries (
 
 ### 4. Konfigurasi Environment
 
-Salin file `.env.example` menjadi `.env`:
-
-```bash
-cp .env.example .env
-```
-
-Isi variabel di dalam file `.env`:
+Untuk local development dengan `wrangler dev`, buat file `.dev.vars` lalu isi seperti ini:
 
 ```ini
 TURSO_DATABASE_URL="libsql://nama-db-kamu.turso.io"
 TURSO_AUTH_TOKEN="token-turso-kamu"
-ADMIN_SECRET="kunci-rahasia-bebas-untuk-admin" 
+ADMIN_SECRET="kunci-rahasia-bebas-untuk-admin"
 ```
 
+Kalau Anda ingin menyimpan contoh konfigurasi, pakai `.env.example` sebagai referensi nilai yang harus diisi. Saat deploy ke Cloudflare, simpan value sensitif dengan `wrangler secret put`.
+
 > **Catatan:** `ADMIN_SECRET` adalah password sederhana yang Anda tentukan sendiri untuk mengakses endpoint pembuatan Game dan Board.
+
+### 5. Istilah Kunci
+
+Supaya tidak membingungkan, berikut mapping yang dipakai oleh kode ini:
+
+| Istilah | Dipakai Di | Fungsi |
+|---|---|---|
+| `apiKey` | Response dari `POST /admin/games` | Identitas publik game |
+| `x-game-key` | Header request client | Nilai yang sama dengan `apiKey` |
+| `secretKey` | Response dari `POST /admin/games` | Secret privat untuk signing HMAC |
+| `x-signature` | Header request client | Hasil HMAC-SHA256 dari body request |
+
+`secretKey` sebaiknya disimpan di backend game, bukan di client publik. Kalau game Anda hanya punya frontend, proteksi signature akan tetap jalan secara teknis, tetapi secret-nya tidak benar-benar aman.
 
 ---
 
@@ -172,7 +181,7 @@ API Anda sekarang online! 🌍
 ```
 
 **Response:**
-Simpan `apiKey` dan `secretKey` ini! `secretKey` digunakan untuk signing request dari client.
+Simpan `apiKey` dan `secretKey` ini. `apiKey` dipakai sebagai `x-game-key`, sedangkan `secretKey` dipakai untuk signing request saat submit skor.
 ```json
 {
   "success": true,
@@ -212,8 +221,8 @@ Endpoint ini membutuhkan **HMAC-SHA256 Signature** untuk mencegah request palsu.
 
 **Headers:**
 * `Content-Type`: `application/json`
-* `x-game-key`: `API_KEY_GAME_KAMU`
-* `x-signature`: `HEX_STRING_DARI_HMAC`
+* `x-game-key`: `apiKey` game kamu dari `POST /admin/games`
+* `x-signature`: `HEX_STRING_DARI_HMAC` dari raw JSON body, memakai `secretKey`
 
 **Body (Raw JSON):**
 ```json
@@ -235,7 +244,7 @@ Endpoint ini membutuhkan **HMAC-SHA256 Signature** untuk mencegah request palsu.
 `GET /v1/boards/:slug?limit=50`
 
 **Headers:**
-* `x-game-key`: `API_KEY_GAME_KAMU`
+* `x-game-key`: `apiKey` game kamu dari `POST /admin/games`
 
 **Response:**
 ```json
@@ -305,6 +314,18 @@ const payload = {
 
 submitScore("API_KEY_ANDA", "SECRET_KEY_ANDA", payload).then(console.log);
 ```
+
+Untuk Unity, parameter `apiKey` pada contoh dokumentasi itu sama dengan `apiKey` yang dikirim server saat `POST /admin/games`. Kalau Anda ingin aman, `secretKey` jangan dimasukkan langsung ke client Unity; lebih baik request signing dilakukan di backend game Anda.
+
+### 7. Contoh Node.js Lokal
+
+File `test-client.js` di repo ini adalah contoh Node.js untuk mengetes submit score secara lokal. Jalankan dengan environment variable, bukan dengan hardcode:
+
+```bash
+API_URL=http://localhost:8787/v1/submit API_KEY=your_api_key SECRET_KEY=your_secret_key node test-client.js
+```
+
+Kalau Anda memakai backend produksi, arahkan `API_URL` ke URL worker yang sudah dideploy.
 
 ## 📄 Lisensi
 
