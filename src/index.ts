@@ -289,12 +289,11 @@ app.post('/v1/submit', async (c) => {
     // 2. SANITY CHECK: ANTI SPEED-HACK
     const timeElapsed = (Date.now() - sessionData.startTime) / 1000
     
-    // Contoh: Game minimal butuh 15 detik untuk diselesaikan. 
-    // (Kamu bisa menyesuaikan angka ini atau mengambilnya dari konfigurasi database)
-    if (timeElapsed < 15) {
+    const minTimeRequired = boardSlug === 'web-leaderboards' ? 0 : 15;
+
+    if (timeElapsed < minTimeRequired) {
       return c.json({ success: false, error: 'CHEATER DETECTED: Game finished unnaturally fast!' }, 403)
     }
-
     // 3. HANGUSKAN TIKET (ANTI REPLAY-ATTACK)
     await c.env.LEADERBOARD_SESSIONS.delete(sessionToken)
 
