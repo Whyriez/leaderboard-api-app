@@ -5,6 +5,7 @@ import { createClient } from '@libsql/client/web'
 type Bindings = {
   TURSO_DATABASE_URL: string
   TURSO_AUTH_TOKEN: string
+  ADMIN_SECRET: string
 }
 
 type Variables = {
@@ -52,6 +53,86 @@ admin.use('/*', async (c, next) => {
     return c.json({ success: false, error: 'Unauthorized: Wrong Admin Secret' }, 401)
   }
   await next()
+})
+
+
+admin.get('/games', async (c) => {
+  const db = getDb(c.env)
+  try {
+    const result = await db.execute({
+      sql: `
+        SELECT
+          g.id AS game_id,
+          g.name,
+          g.api_key,
+          g.secret_key, -- TAMBAHKAN INI
+          g.created_at,
+          COUNT(b.id) AS board_count
+        FROM games g
+        LEFT JOIN boards b ON b.game_id = g.id
+        GROUP BY g.id, g.name, g.api_key, g.secret_key, g.created_at -- TAMBAHKAN JUGA DI SINI
+        ORDER BY g.created_at DESC
+      `,
+    })
+
+    return c.json({
+      success: true,
+      data: result.rows.map((row) => ({
+        gameId: row.game_id,
+        name: row.name,
+        apiKey: row.api_key,
+        secretKey: row.secret_key,
+        createdAt: row.created_at,
+        boardCount: Number(row.board_count || 0),
+      })),
+    })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+admin.get('/games/:gameId/boards', async (c) => {
+  const db = getDb(c.env)
+  const gameId = c.req.param('gameId')
+
+  try {
+    const gameRes = await db.execute({
+      sql: 'SELECT id FROM games WHERE id = ?',
+      args: [gameId],
+    })
+
+    if (gameRes.rows.length === 0) {
+      return c.json({ success: false, error: 'Game not found' }, 404)
+    }
+
+    const result = await db.execute({
+      sql: `
+        SELECT
+          id AS board_id,
+          slug,
+          name,
+          order_mode,
+          created_at
+        FROM boards
+        WHERE game_id = ?
+        ORDER BY created_at DESC
+      `,
+      args: [gameId],
+    })
+
+    return c.json({
+      success: true,
+      data: result.rows.map((row) => ({
+        boardId: row.board_id,
+        slug: row.slug,
+        name: row.name,
+        orderMode: row.order_mode,
+        createdAt: row.created_at,
+      })),
+    })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
 })
 
 
@@ -304,6 +385,51 @@ app.get('/v1/boards/:slug', async (c) => {
 
     return c.json({ success: true, data: formatted })
 
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+
+// ==========================================
+// ENDPOINT: DELETE GAME
+// ==========================================
+admin.delete('/games/:gameId', async (c) => {
+  const db = getDb(c.env)
+  const gameId = c.req.param('gameId')
+
+  try {
+    await db.execute({ sql: 'DELETE FROM entries WHERE board_id IN (SELECT id FROM boards WHERE game_id = ?)', args: [gameId] })
+    await db.execute({ sql: 'DELETE FROM boards WHERE game_id = ?', args: [gameId] })
+    await db.execute({ sql: 'DELETE FROM players WHERE game_id = ?', args: [gameId] })
+    const res = await db.execute({ sql: 'DELETE FROM games WHERE id = ?', args: [gameId] })
+
+    if (res.rowsAffected === 0) {
+      return c.json({ success: false, error: 'Game not found' }, 404)
+    }
+
+    return c.json({ success: true, message: 'Game and all related data deleted successfully' })
+  } catch (e: any) {
+    return c.json({ success: false, error: e.message }, 500)
+  }
+})
+
+// ==========================================
+// ENDPOINT: DELETE BOARD
+// ==========================================
+admin.delete('/boards/:boardId', async (c) => {
+  const db = getDb(c.env)
+  const boardId = c.req.param('boardId')
+
+  try {
+    await db.execute({ sql: 'DELETE FROM entries WHERE board_id = ?', args: [boardId] })
+    const res = await db.execute({ sql: 'DELETE FROM boards WHERE id = ?', args: [boardId] })
+
+    if (res.rowsAffected === 0) {
+      return c.json({ success: false, error: 'Board not found' }, 404)
+    }
+
+    return c.json({ success: true, message: 'Leaderboard deleted successfully' })
   } catch (e: any) {
     return c.json({ success: false, error: e.message }, 500)
   }

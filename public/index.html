@@ -3,211 +3,770 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Leaderboard API Self-Host</title>
+		<title>Leaderboard Admin Console</title>
+		
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+		<script src="https://cdn.tailwindcss.com"></script>
+		<script>
+			tailwind.config = {
+				theme: {
+					extend: {
+						fontFamily: {
+							sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+							mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+						},
+						colors: {
+							dark: '#030811',
+							panel: 'rgba(15, 23, 42, 0.65)',
+						}
+					}
+				}
+			}
+		</script>
 		<style>
-			:root {
-				color-scheme: dark;
-				--bg: #08111f;
-				--panel: rgba(12, 21, 38, 0.88);
-				--panel-border: rgba(148, 163, 184, 0.22);
-				--text: #e5eefc;
-				--muted: #91a4c3;
-				--accent: #7dd3fc;
-				--accent-2: #fbbf24;
-				--code-bg: rgba(15, 23, 42, 0.9);
-			}
-
-			* {
-				box-sizing: border-box;
-			}
-
-			body {
-				margin: 0;
-				min-height: 100vh;
-				font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-				background:
-					radial-gradient(circle at top left, rgba(125, 211, 252, 0.18), transparent 36%),
-					radial-gradient(circle at bottom right, rgba(251, 191, 36, 0.15), transparent 30%),
-					linear-gradient(180deg, #050a13 0%, #0b1526 100%);
-				color: var(--text);
-			}
-
-			main {
-				max-width: 1080px;
-				margin: 0 auto;
-				padding: 56px 24px 72px;
-			}
-
-			.hero {
-				display: grid;
-				gap: 20px;
-				padding: 28px;
-				border: 1px solid var(--panel-border);
-				border-radius: 28px;
-				background: var(--panel);
-				backdrop-filter: blur(18px);
-				box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
-			}
-
-			h1 {
-				margin: 0;
-				font-size: clamp(2.4rem, 6vw, 4.8rem);
-				line-height: 0.95;
-				letter-spacing: -0.05em;
-			}
-
-			.lead {
-				max-width: 760px;
-				color: var(--muted);
-				font-size: 1.05rem;
-				line-height: 1.7;
-				margin: 0;
-			}
-
-			.badges {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 10px;
-			}
-
-			.badge {
-				padding: 8px 12px;
-				border-radius: 999px;
-				background: rgba(125, 211, 252, 0.12);
-				border: 1px solid rgba(125, 211, 252, 0.25);
-				color: var(--text);
-				font-size: 0.92rem;
-			}
-
-			.grid {
-				display: grid;
-				grid-template-columns: repeat(12, minmax(0, 1fr));
-				gap: 18px;
-				margin-top: 22px;
-			}
-
-			.card {
-				grid-column: span 6;
-				padding: 20px;
-				border-radius: 22px;
-				border: 1px solid var(--panel-border);
-				background: rgba(8, 15, 28, 0.72);
-			}
-
-			.card h2 {
-				margin: 0 0 12px;
-				font-size: 1.05rem;
-			}
-
-			.card p,
-			.card li {
-				color: var(--muted);
-				line-height: 1.7;
-			}
-
-			ul {
-				margin: 0;
-				padding-left: 18px;
-			}
-
-			code,
-			pre {
-				font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-			}
-
-			pre {
-				margin: 0;
-				padding: 16px;
-				border-radius: 16px;
-				background: var(--code-bg);
-				overflow: auto;
-				border: 1px solid rgba(148, 163, 184, 0.15);
-			}
-
-			.kv {
-				display: grid;
-				grid-template-columns: 110px 1fr;
-				gap: 10px 14px;
-			}
-
-			.kv strong {
-				color: var(--accent);
-			}
-
-			.note {
-				color: #cbd5e1;
-				padding: 14px 16px;
-				border-radius: 16px;
-				background: rgba(251, 191, 36, 0.08);
-				border: 1px solid rgba(251, 191, 36, 0.18);
-			}
-
-			@media (max-width: 720px) {
-				main {
-					padding: 20px 16px 48px;
-				}
-
-				.hero {
-					padding: 20px;
-					border-radius: 22px;
-				}
-
-				.card {
-					grid-column: span 12;
-				}
-
-				.kv {
-					grid-template-columns: 1fr;
-				}
-			}
+			::-webkit-scrollbar { width: 6px; height: 6px; }
+			::-webkit-scrollbar-track { background: transparent; }
+			::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+			::-webkit-scrollbar-thumb:hover { background: #475569; }
+			body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 		</style>
 	</head>
-	<body>
-		<main>
-			<section class="hero">
-				<div class="badges">
-					<span class="badge">Cloudflare Workers</span>
-					<span class="badge">Turso / LibSQL</span>
-					<span class="badge">HMAC-SHA256 signing</span>
+	<body class="bg-dark text-slate-300 min-h-screen relative overflow-x-hidden selection:bg-sky-500/30 selection:text-sky-100">
+		
+		<!-- Background Elements -->
+		<div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+			<div class="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] rounded-full bg-sky-600/10 blur-[120px]"></div>
+			<div class="absolute top-[40%] right-[10%] w-[30%] h-[30%] rounded-full bg-amber-500/10 blur-[120px]"></div>
+			<div class="absolute bottom-[-10%] left-[20%] w-[40%] h-[40%] rounded-full bg-indigo-600/10 blur-[120px]"></div>
+		</div>
+
+		<main class="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12 space-y-8">
+			<!-- Hero Section -->
+			<section class="relative bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800/80 rounded-[2rem] p-8 shadow-2xl shadow-black/50 overflow-hidden">
+				<div class="relative z-10 flex flex-col md:flex-row gap-8 justify-between items-start md:items-center">
+					<div class="flex-1">
+						<div class="flex flex-wrap gap-2.5 mb-4">
+							<span class="px-3 py-1 rounded-full border border-sky-500/30 bg-sky-500/10 text-sky-300 text-xs font-semibold tracking-wide uppercase">Admin Console</span>
+							<span class="px-3 py-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-medium flex items-center gap-1.5"><div class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div> API Ready</span>
+						</div>
+						<h1 class="text-3xl md:text-4xl font-extrabold tracking-tight text-white mb-2">
+							Leaderboard <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-sky-200">Manager</span>
+						</h1>
+						<p class="text-slate-400 text-sm max-w-xl leading-relaxed">
+							Self-hosted game & board management. Create API credentials and oversee your leaderboard data structure securely.
+						</p>
+					</div>
+					<div class="grid grid-cols-2 md:grid-cols-3 gap-4 w-full md:w-auto shrink-0">
+						<div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+							<h3 class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Target Worker URL</h3>
+							<p id="workerUrlValue" class="text-sky-200 font-mono text-xs truncate max-w-[150px]">https://...</p>
+						</div>
+						<div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
+							<h3 class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Total Games</h3>
+							<p id="gamesLoadedValue" class="text-white font-bold text-lg">0</p>
+						</div>
+						<div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 col-span-2 md:col-span-1">
+							<h3 class="text-[10px] font-semibold uppercase tracking-wider text-slate-500 mb-1">Boards in View</h3>
+							<p id="boardsLoadedValue" class="text-white font-bold text-lg">0</p>
+						</div>
+					</div>
 				</div>
-				<h1>Leaderboard API<br />Self-Host</h1>
-				<p class="lead">
-					Server leaderboard untuk banyak game sekaligus. Admin membuat <strong>apiKey</strong> dan
-					<strong>secretKey</strong> lewat endpoint protected, lalu client game memakai <strong>x-game-key</strong>
-					untuk baca data dan <strong>x-signature</strong> untuk submit skor secara aman.
-				</p>
 			</section>
 
-			<section class="grid">
-				<article class="card">
-					<h2>Endpoint Utama</h2>
-					<div class="kv">
-						<strong>POST</strong><span>/admin/games</span>
-						<strong>POST</strong><span>/admin/boards</span>
-						<strong>POST</strong><span>/v1/submit</span>
-						<strong>GET</strong><span>/v1/boards/:slug</span>
+			<!-- SPLIT 1: Connection & Response -->
+			<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+				<div class="lg:col-span-4 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+					<div class="flex items-center gap-3 mb-5">
+						<h2 class="text-lg font-bold text-white">1. Authentication</h2>
 					</div>
-				</article>
+					<div class="space-y-4 flex-1">
+						<div>
+							<label for="apiUrl" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Worker API URL</label>
+							<input id="apiUrl" type="url" placeholder="https://your-worker.workers.dev" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all" />
+						</div>
+						<div>
+							<label for="adminSecret" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Admin Secret Key</label>
+							<input id="adminSecret" type="password" placeholder="Enter ADMIN_SECRET" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono text-slate-200 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all" />
+						</div>
+					</div>
+					<div class="flex flex-wrap gap-2 mt-5">
+						<button id="saveSettings" type="button" class="flex-1 justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-all">Save Settings</button>
+						<button id="loadDataBtn" type="button" class="flex-1 justify-center px-4 py-2.5 rounded-xl text-xs font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 border border-transparent transition-all disabled:opacity-50">Load Data</button>
+					</div>
+					<button id="clearSettings" type="button" class="mt-2 w-full justify-center px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-all">Reset & Clear Storage</button>
+				</div>
 
-				<article class="card">
-					<h2>Credentials</h2>
-					<ul>
-						<li><strong>apiKey</strong> adalah key publik game dan dipakai sebagai <code>x-game-key</code>.</li>
-						<li><strong>secretKey</strong> adalah secret privat untuk HMAC signing.</li>
-						<li><strong>ADMIN_SECRET</strong> hanya untuk admin endpoint di worker.</li>
-					</ul>
-				</article>
+				<div class="lg:col-span-8 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+					<div class="flex items-center gap-3 mb-4">
+						<h2 class="text-lg font-bold text-white">System Logs</h2>
+						<span class="px-2.5 py-1 rounded-full bg-indigo-900/30 border border-indigo-800 text-indigo-300 text-[10px] uppercase font-bold tracking-wider">API Feedback</span>
+					</div>
+					<div class="bg-slate-950 border border-slate-800 rounded-xl overflow-hidden shadow-inner flex flex-col h-full min-h-[160px]">
+						<div class="px-4 py-2 border-b border-slate-800/80 bg-slate-900/80 flex justify-between items-center">
+							<strong id="outputTitle" class="text-xs font-bold text-sky-400 tracking-wide">Ready</strong>
+							<span id="outputStatus" class="text-[11px] text-slate-500 font-medium">Waiting for an action</span>
+						</div>
+						<pre id="outputBody" class="p-4 overflow-auto text-sky-100/80 font-mono text-xs flex-1 whitespace-pre-wrap break-words m-0">Enter your Admin Secret, then click "Save Settings" & "Load Data".</pre>
+					</div>
+				</div>
+			</section>
 
-				<article class="card">
-					<h2>Local Dev</h2>
-					<p>Isi <code>.dev.vars</code> untuk <code>wrangler dev</code>, lalu jalankan server local dengan <code>npm run dev</code>.</p>
-				</article>
+			<!-- SPLIT 2: Games Management -->
+			<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+				<div class="lg:col-span-4 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl h-max">
+					<div class="flex items-center gap-3 mb-5">
+						<h2 class="text-lg font-bold text-white">Create Game</h2>
+					</div>
+					<div class="space-y-4">
+						<div>
+							<label for="gameName" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Game Name</label>
+							<input id="gameName" type="text" placeholder="Example: Neon Runner" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all" />
+						</div>
+						<button id="createGameBtn" type="button" class="w-full inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-emerald-400 hover:bg-emerald-300 transition-all disabled:opacity-60">
+							<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+							Generate Game Credentials
+						</button>
+					</div>
+				</div>
 
-				<article class="card">
-					<h2>Security Note</h2>
-					<p class="note">Jangan simpan <code>secretKey</code> di client publik jika bisa dihindari. Idealnya signing dilakukan di backend game sendiri.</p>
-				</article>
+				<div class="lg:col-span-8 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+					<div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+						<div class="flex items-center gap-3">
+							<h2 class="text-lg font-bold text-white">Game Directory</h2>
+							<span id="gamesCount" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs font-bold font-mono">0</span>
+						</div>
+						<button id="refreshGamesBtn" type="button" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition-colors">
+							<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+							Refresh List
+						</button>
+					</div>
+					
+					<div class="flex-1 bg-slate-900/50 border border-slate-700/80 rounded-xl overflow-hidden flex flex-col">
+						<div class="bg-slate-800/80 px-4 py-2 flex text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/80 hidden sm:flex">
+							<div class="w-1/2">Game Info</div>
+							<div class="w-1/2 text-right">Data Management</div>
+						</div>
+						<div id="gamesList" class="overflow-y-auto max-h-[350px] divide-y divide-slate-700/50">
+							<!-- Content generated by JS -->
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- SPLIT 3: Boards Management -->
+			<section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+				<div class="lg:col-span-4 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl h-max">
+					<div class="flex items-center gap-3 mb-5">
+						<h2 class="text-lg font-bold text-white">Create Leaderboard</h2>
+					</div>
+					
+					<div class="space-y-4">
+						<div>
+							<label for="boardGameSelect" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Target Game</label>
+							<select id="boardGameSelect" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm font-semibold text-sky-200 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all appearance-none cursor-pointer">
+								<option value="" disabled selected>-- Select a Game --</option>
+							</select>
+						</div>
+						<div>
+							<label for="boardName" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Board Name</label>
+							<input id="boardName" type="text" placeholder="e.g. Global Top 100" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all" />
+						</div>
+						<div class="grid grid-cols-2 gap-3">
+							<div>
+								<label for="boardSlug" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Slug ID</label>
+								<input id="boardSlug" type="text" placeholder="global-top" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-3 py-2.5 text-sm font-mono text-slate-200 focus:ring-2 focus:ring-sky-500/40 outline-none" />
+							</div>
+							<div>
+								<label for="boardMode" class="block text-xs font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Order Mode</label>
+								<select id="boardMode" class="w-full bg-slate-950/50 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:ring-2 focus:ring-sky-500/40 outline-none appearance-none cursor-pointer">
+									<option value="DESC">DESC (High score)</option>
+									<option value="ASC">ASC (Low score)</option>
+								</select>
+							</div>
+						</div>
+						<button id="createBoardBtn" type="button" class="w-full mt-2 inline-flex justify-center items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 transition-all disabled:opacity-60">
+							<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" /></svg>
+							Create Board
+						</button>
+					</div>
+				</div>
+
+				<div class="lg:col-span-8 bg-panel backdrop-blur-xl border border-slate-800 rounded-3xl p-6 shadow-xl flex flex-col">
+					<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+						<div class="flex items-center gap-3">
+							<h2 class="text-lg font-bold text-white">Board Directory</h2>
+							<span id="boardsCount" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 text-xs font-bold font-mono">0</span>
+						</div>
+						
+						<!-- Dropdown to Filter Boards -->
+						<div class="flex items-center gap-2">
+							<select id="viewBoardsGameSelect" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-300 focus:ring-2 focus:ring-sky-500/40 focus:border-sky-500 outline-none transition-all appearance-none cursor-pointer max-w-[200px] truncate">
+								<option value="" disabled selected>Select Game to View</option>
+							</select>
+							<button id="refreshBoardsBtn" type="button" class="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-400 bg-slate-800 hover:bg-slate-700 hover:text-white border border-slate-700 transition-colors" title="Refresh Boards">
+								<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+							</button>
+						</div>
+					</div>
+					
+					<div class="flex-1 bg-slate-900/50 border border-slate-700/80 rounded-xl overflow-hidden flex flex-col mt-2">
+						<div class="bg-slate-800/80 px-4 py-2 flex text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-700/80 hidden sm:flex">
+							<div class="w-5/12">Board Info & Slug</div>
+							<div class="w-3/12">Order Mode</div>
+							<div class="w-4/12 text-right">Actions</div>
+						</div>
+						<div id="boardsList" class="overflow-y-auto max-h-[350px] divide-y divide-slate-700/50">
+							<!-- Content generated by JS -->
+						</div>
+					</div>
+				</div>
 			</section>
 		</main>
+
+		<!-- GAME CREDENTIALS MODAL -->
+		<div id="gameModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
+			<div class="bg-slate-900 border border-slate-700/80 rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden transform scale-95 transition-transform duration-300" id="gameModalContent">
+				
+				<div class="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+					<h3 class="text-lg font-bold text-white flex items-center gap-2">
+						<svg class="w-5 h-5 text-sky-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+						Game Credentials
+					</h3>
+					<button type="button" class="text-slate-400 hover:text-white transition-colors" onclick="closeGameModal()">
+						<svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+					</button>
+				</div>
+				
+				<div class="p-6 space-y-5">
+					<div>
+						<p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Game Name</p>
+						<p id="modalGameName" class="text-lg font-bold text-white">Loading...</p>
+					</div>
+
+					<div>
+						<p class="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Public API Key (x-game-key)</p>
+						<div class="flex gap-2">
+							<input type="text" id="modalApiKey" readonly class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm font-mono text-sky-300 outline-none" />
+							<button type="button" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700" onclick="copyModalField('modalApiKey', this)">Copy</button>
+						</div>
+						<p class="text-[11px] text-slate-500 mt-1">Gunakan key ini secara publik pada client app untuk membaca leaderboard.</p>
+					</div>
+
+					<div>
+						<p class="text-xs font-semibold text-amber-500 uppercase tracking-wide mb-1">Secret Key (x-signature sign)</p>
+						<div class="flex gap-2">
+							<input type="text" id="modalSecretKey" readonly class="w-full bg-amber-950/20 border border-amber-900/40 rounded-lg px-3 py-2 text-sm font-mono text-amber-400 outline-none" />
+							<button type="button" class="shrink-0 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition-colors border border-slate-700" onclick="copyModalField('modalSecretKey', this)">Copy</button>
+						</div>
+						<p class="text-[11px] text-amber-500/70 mt-1">SANGAT RAHASIA! Gunakan hanya di backend/server kamu untuk melakukan HMAC SHA-256 signature saat mensubmit skor.</p>
+					</div>
+				</div>
+				
+				<div class="px-6 py-4 bg-slate-950/50 border-t border-slate-800 flex justify-end">
+					<button type="button" class="px-4 py-2 rounded-xl text-sm font-bold text-slate-900 bg-sky-400 hover:bg-sky-300 transition-all" onclick="closeGameModal()">Done</button>
+				</div>
+			</div>
+		</div>
+
+		<!-- Script Logic -->
+		<script>
+			// Elements Binding
+			const apiUrlInput = document.getElementById('apiUrl')
+			const adminSecretInput = document.getElementById('adminSecret')
+			const gameNameInput = document.getElementById('gameName')
+			
+			// Selects
+			const boardGameSelect = document.getElementById('boardGameSelect')
+			const viewBoardsGameSelect = document.getElementById('viewBoardsGameSelect')
+			
+			const boardSlugInput = document.getElementById('boardSlug')
+			const boardNameInput = document.getElementById('boardName')
+			const boardModeInput = document.getElementById('boardMode')
+			
+			const createGameBtn = document.getElementById('createGameBtn')
+			const createBoardBtn = document.getElementById('createBoardBtn')
+			const refreshGamesBtn = document.getElementById('refreshGamesBtn')
+			const refreshBoardsBtn = document.getElementById('refreshBoardsBtn')
+			const loadDataBtn = document.getElementById('loadDataBtn')
+			const saveSettingsBtn = document.getElementById('saveSettings')
+			const clearSettingsBtn = document.getElementById('clearSettings')
+			
+			const outputTitle = document.getElementById('outputTitle')
+			const outputStatus = document.getElementById('outputStatus')
+			const outputBody = document.getElementById('outputBody')
+			const gamesList = document.getElementById('gamesList')
+			const boardsList = document.getElementById('boardsList')
+			const gamesCount = document.getElementById('gamesCount')
+			const boardsCount = document.getElementById('boardsCount')
+			
+			const workerUrlValue = document.getElementById('workerUrlValue')
+			const gamesLoadedValue = document.getElementById('gamesLoadedValue')
+			const boardsLoadedValue = document.getElementById('boardsLoadedValue')
+
+			// State & Storage Initialization
+			const state = {
+				games: [],
+				boards: [],
+				selectedGameIdForBoards: localStorage.getItem('leaderboard-selected-game-id') || '',
+			}
+
+			// Load from LocalStorage
+			const storedApiUrl = localStorage.getItem('leaderboard-api-url')
+			const storedAdminSecret = localStorage.getItem('leaderboard-admin-secret')
+
+			apiUrlInput.value = storedApiUrl || window.location.origin
+			workerUrlValue.textContent = apiUrlInput.value
+			
+			if (storedAdminSecret) {
+				adminSecretInput.value = storedAdminSecret
+			}
+
+			// Core Helpers
+			function getApiBaseUrl() {
+				return (apiUrlInput.value.trim() || window.location.origin).replace(/\/$/, '')
+			}
+
+			function getErrorMessage(error) {
+				return error instanceof Error ? error.message : String(error)
+			}
+
+			function setOutput(title, status, payload) {
+				outputTitle.textContent = title
+				outputStatus.textContent = status
+				outputBody.textContent = JSON.stringify(payload, null, 2)
+			}
+
+			function setBusy(button, busyText, stateValue) {
+				button.disabled = stateValue
+				button.dataset.originalText = button.dataset.originalText || button.innerHTML
+				
+				if (stateValue) {
+					button.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-current inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${busyText}`
+				} else {
+					button.innerHTML = button.dataset.originalText
+				}
+			}
+
+			function getAdminHeaders() {
+				const adminSecret = adminSecretInput.value.trim()
+				if (!adminSecret) {
+					throw new Error('Admin Secret is required. Please enter it and click Save Settings.')
+				}
+				return {
+					'Content-Type': 'application/json',
+					'x-admin-secret': adminSecret,
+				}
+			}
+
+			function escapeHtml(value) {
+				return String(value)
+					.replaceAll('&', '&amp;')
+					.replaceAll('<', '&lt;')
+					.replaceAll('>', '&gt;')
+					.replaceAll('"', '&quot;')
+					.replaceAll("'", '&#39;')
+			}
+
+			function updateMetrics() {
+				workerUrlValue.textContent = getApiBaseUrl()
+				gamesLoadedValue.textContent = String(state.games.length)
+				boardsLoadedValue.textContent = String(state.boards.length)
+				gamesCount.textContent = state.games.length
+				boardsCount.textContent = state.boards.length
+			}
+
+			function getEmptyStateHtml(message) {
+				return `<div class="p-8 text-center"><div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-slate-800/50 mb-3"><svg class="w-6 h-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg></div><p class="text-sm text-slate-400">${message}</p></div>`
+			}
+
+			async function requestAdminJson(path, options = {}) {
+				const response = await fetch(`${getApiBaseUrl()}${path}`, {
+					...options,
+					headers: { ...getAdminHeaders(), ...(options.headers || {}) },
+				})
+				const payload = await response.json().catch(() => null)
+				if (!response.ok || payload?.success === false) {
+					throw new Error(payload?.error || `Request failed (${response.status})`)
+				}
+				return payload
+			}
+
+			// Populate Dropdowns
+			function updateGameDropdowns() {
+				let optionsHtml = '<option value="" disabled selected>-- Select a Game --</option>'
+				state.games.forEach(game => {
+					optionsHtml += `<option value="${escapeHtml(game.apiKey)}" data-game-id="${escapeHtml(game.gameId)}">${escapeHtml(game.name)}</option>`
+				})
+				
+				boardGameSelect.innerHTML = optionsHtml
+				
+				// For the view boards select, value is gameId
+				let viewOptionsHtml = '<option value="" disabled selected>Select Game to View...</option>'
+				state.games.forEach(game => {
+					viewOptionsHtml += `<option value="${escapeHtml(game.gameId)}">${escapeHtml(game.name)}</option>`
+				})
+				viewBoardsGameSelect.innerHTML = viewOptionsHtml
+
+				// Restore selection if exists
+				if(state.selectedGameIdForBoards) {
+					viewBoardsGameSelect.value = state.selectedGameIdForBoards
+				}
+			}
+
+			// Modals Logic
+			const gameModal = document.getElementById('gameModal');
+			const gameModalContent = document.getElementById('gameModalContent');
+			
+			function openGameModal(gameId) {
+				const game = state.games.find(g => g.gameId === gameId);
+				if(!game) return;
+
+				document.getElementById('modalGameName').textContent = game.name;
+				document.getElementById('modalApiKey').value = game.apiKey;
+				
+				// Handle fallback if backend hasn't been updated yet to return secretKey
+				document.getElementById('modalSecretKey').value = game.secretKey || "Backend needs update to return secretKey!";
+
+				gameModal.classList.remove('opacity-0', 'pointer-events-none');
+				setTimeout(() => gameModalContent.classList.remove('scale-95'), 10);
+			}
+
+			function closeGameModal() {
+				gameModalContent.classList.add('scale-95');
+				gameModal.classList.add('opacity-0', 'pointer-events-none');
+			}
+
+			async function copyModalField(elementId, btn) {
+				const el = document.getElementById(elementId);
+				try {
+					await navigator.clipboard.writeText(el.value);
+					const oldText = btn.textContent;
+					btn.textContent = 'Copied!';
+					btn.classList.replace('bg-slate-800', 'bg-emerald-600');
+					setTimeout(() => {
+						btn.textContent = oldText;
+						btn.classList.replace('bg-emerald-600', 'bg-slate-800');
+					}, 1500);
+				} catch(err) {
+					alert('Copy failed');
+				}
+			}
+
+			// Render UI Functions
+			function renderGames() {
+				if (state.games.length === 0) {
+					gamesList.innerHTML = getEmptyStateHtml('No games found. Create one to get started.')
+					return
+				}
+
+				gamesList.innerHTML = state.games.map((game) => `
+					<div class="flex flex-col sm:flex-row items-start sm:items-center p-4 hover:bg-slate-800/40 transition-colors" data-game-id="${escapeHtml(game.gameId)}">
+						<div class="w-full sm:w-1/2 min-w-0 pr-4 mb-3 sm:mb-0">
+							<div class="flex items-center gap-2 mb-0.5">
+								<h3 class="text-sm font-bold text-white truncate">${escapeHtml(game.name)}</h3>
+								<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 shrink-0">${game.boardCount} Boards</span>
+							</div>
+							<div class="text-[11px] text-slate-500 font-mono truncate">ID: ${escapeHtml(game.gameId)}</div>
+						</div>
+						
+						<div class="w-full sm:w-1/2 flex items-center sm:justify-end gap-2">
+							<button type="button" class="px-3 py-1.5 rounded bg-sky-900/30 hover:bg-sky-800/50 text-sky-300 text-xs font-semibold transition-colors flex items-center gap-1.5 border border-sky-700/50" data-action="view-keys" data-game-id="${escapeHtml(game.gameId)}">
+								<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" /></svg>
+								View Info
+							</button>
+							<button type="button" class="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition-colors flex items-center gap-1.5 border border-red-500/20" data-action="delete-game" data-game-id="${escapeHtml(game.gameId)}" data-game-name="${escapeHtml(game.name)}">
+								<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+								Delete
+							</button>
+						</div>
+					</div>
+				`).join('')
+			}
+
+			function renderBoards() {
+				if (!state.selectedGameIdForBoards) {
+					boardsList.innerHTML = getEmptyStateHtml('Select a game from the dropdown above.')
+					return
+				}
+				if (state.boards.length === 0) {
+					boardsList.innerHTML = getEmptyStateHtml('No boards found for this game.')
+					return
+				}
+
+				boardsList.innerHTML = state.boards.map((board) => `
+					<div class="flex flex-col sm:flex-row items-start sm:items-center p-4 hover:bg-slate-800/40 transition-colors">
+						<div class="w-full sm:w-5/12 min-w-0 pr-4 mb-3 sm:mb-0">
+							<h3 class="text-sm font-bold text-white truncate mb-0.5">${escapeHtml(board.name)}</h3>
+							<div class="flex items-center gap-2 text-[11px] font-mono text-slate-500 truncate">
+								<span class="text-sky-400 bg-sky-900/30 px-1 rounded">/${escapeHtml(board.slug)}</span>
+								<span>ID: ${escapeHtml(board.boardId)}</span>
+							</div>
+						</div>
+						
+						<div class="w-full sm:w-3/12 pr-4 mb-3 sm:mb-0">
+							<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-900 border border-slate-700 text-xs font-semibold text-slate-300">
+								<svg class="w-3 h-3 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+									${board.orderMode === 'DESC' ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12" />' : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4h13M3 8h9m-9 4h9m5-4v12m0 0l-4-4m4 4l4-4" />'}
+								</svg>
+								${escapeHtml(board.orderMode)}
+							</span>
+						</div>
+						
+						<div class="w-full sm:w-4/12 flex sm:justify-end">
+							<button type="button" class="px-3 py-1.5 rounded bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition-colors flex items-center gap-1.5 border border-red-500/20" data-action="delete-board" data-board-id="${escapeHtml(board.boardId)}" data-board-name="${escapeHtml(board.name)}">
+								<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+								Delete
+							</button>
+						</div>
+					</div>
+				`).join('')
+			}
+
+			// Core Data Logic
+			async function loadBoards(gameId, options = {}) {
+				if (!gameId) {
+					state.boards = []
+					renderBoards()
+					updateMetrics()
+					return
+				}
+
+				const payload = await requestAdminJson(`/admin/games/${gameId}/boards`)
+				state.boards = payload.data || []
+				renderBoards()
+				updateMetrics()
+
+				if (!options.silent) {
+					setOutput('Boards Fetched', 'Success', { gameId, boardsCount: state.boards.length })
+				}
+			}
+
+			async function loadGames(options = {}) {
+				const payload = await requestAdminJson('/admin/games')
+				state.games = payload.data || []
+
+				// Verify selected game for boards still exists
+				const selectedStillExists = state.games.some((game) => game.gameId === state.selectedGameIdForBoards)
+				if (!selectedStillExists) {
+					state.selectedGameIdForBoards = ''
+					localStorage.removeItem('leaderboard-selected-game-id')
+				}
+
+				updateGameDropdowns()
+				renderGames()
+				
+				if (state.selectedGameIdForBoards) {
+					await loadBoards(state.selectedGameIdForBoards, { silent: true })
+				} else {
+					state.boards = []
+					renderBoards()
+				}
+				
+				updateMetrics()
+
+				if (!options.silent) {
+					setOutput('Games Fetched', 'Success', { gamesCount: state.games.length })
+				}
+			}
+
+			// API Actions
+			async function deleteGame(gameId) {
+				try {
+					const payload = await requestAdminJson(`/admin/games/${gameId}`, { method: 'DELETE' });
+					setOutput('Game Deleted', 'Success', payload);
+					if (state.selectedGameIdForBoards === gameId) {
+						state.selectedGameIdForBoards = '';
+						localStorage.removeItem('leaderboard-selected-game-id');
+					}
+					await loadGames({ silent: true });
+				} catch (error) {
+					const message = getErrorMessage(error);
+					setOutput('Delete Failed', message, { error: message });
+				}
+			}
+
+			async function deleteBoard(boardId) {
+				try {
+					const payload = await requestAdminJson(`/admin/boards/${boardId}`, { method: 'DELETE' });
+					setOutput('Board Deleted', 'Success', payload);
+					if (state.selectedGameIdForBoards) {
+						await loadBoards(state.selectedGameIdForBoards, { silent: true });
+						await loadGames({ silent: true }); 
+					}
+				} catch (error) {
+					const message = getErrorMessage(error);
+					setOutput('Delete Failed', message, { error: message });
+				}
+			}
+
+			// Select change event for boards
+			viewBoardsGameSelect.addEventListener('change', async (e) => {
+				const gameId = e.target.value;
+				if (gameId) {
+					state.selectedGameIdForBoards = gameId;
+					localStorage.setItem('leaderboard-selected-game-id', gameId);
+					await loadBoards(gameId);
+				}
+			});
+
+			// Event Listeners (Settings)
+			saveSettingsBtn.addEventListener('click', () => {
+				const url = getApiBaseUrl()
+				const secret = adminSecretInput.value.trim()
+				
+				localStorage.setItem('leaderboard-api-url', url)
+				localStorage.setItem('leaderboard-admin-secret', secret)
+				workerUrlValue.textContent = url
+				
+				const oldText = saveSettingsBtn.textContent
+				saveSettingsBtn.textContent = 'Saved!'
+				saveSettingsBtn.classList.replace('bg-slate-800', 'bg-emerald-600')
+				setTimeout(() => {
+					saveSettingsBtn.textContent = oldText
+					saveSettingsBtn.classList.replace('bg-emerald-600', 'bg-slate-800')
+				}, 1500)
+
+				setOutput('Settings Saved', 'Local Storage Updated', { url, secretSaved: !!secret })
+			})
+
+			clearSettingsBtn.addEventListener('click', () => {
+				if(confirm('Are you sure you want to clear saved API URL and Admin Secret from your browser?')) {
+					localStorage.removeItem('leaderboard-api-url')
+					localStorage.removeItem('leaderboard-admin-secret')
+					localStorage.removeItem('leaderboard-selected-game-id')
+					
+					apiUrlInput.value = window.location.origin
+					adminSecretInput.value = ''
+					workerUrlValue.textContent = apiUrlInput.value
+					state.selectedGameIdForBoards = ''
+					state.games = []
+					state.boards = []
+					
+					updateGameDropdowns()
+					renderGames()
+					renderBoards()
+					updateMetrics()
+					
+					setOutput('Storage Cleared', 'Success', {})
+				}
+			})
+
+			// Event Listeners (Data Load)
+			loadDataBtn.addEventListener('click', async () => {
+				setBusy(loadDataBtn, 'Loading', true)
+				try { await loadGames() } 
+				catch (error) { setOutput('Load Failed', getErrorMessage(error), { error: getErrorMessage(error) }) } 
+				finally { setBusy(loadDataBtn, 'Loading', false) }
+			})
+
+			refreshGamesBtn.addEventListener('click', async () => {
+				setBusy(refreshGamesBtn, '...', true)
+				try { await loadGames({ silent: false }) } 
+				catch (error) { setOutput('Refresh Failed', getErrorMessage(error), { error: getErrorMessage(error) }) } 
+				finally { setBusy(refreshGamesBtn, '...', false) }
+			})
+
+			refreshBoardsBtn.addEventListener('click', async () => {
+				if (!state.selectedGameIdForBoards) return setOutput('Error', 'Pick a game first in the dropdown', {})
+				setBusy(refreshBoardsBtn, '...', true)
+				try { await loadBoards(state.selectedGameIdForBoards, { silent: false }) } 
+				catch (error) { setOutput('Refresh Failed', getErrorMessage(error), { error: getErrorMessage(error) }) } 
+				finally { setBusy(refreshBoardsBtn, '...', false) }
+			})
+
+			// Event Listeners (Delegation inside Lists)
+			gamesList.addEventListener('click', async (event) => {
+				const button = event.target.closest('[data-action]')
+				if (!button) return
+
+				const action = button.dataset.action
+				const gameId = button.dataset.gameId
+				const gameName = button.dataset.gameName
+
+				if (action === 'view-keys' && gameId) {
+					openGameModal(gameId)
+				}
+				else if (action === 'delete-game' && gameId) {
+					if (confirm(`⚠ PERHATIAN: Hapus game "${gameName}"?\nSemua Boards & Scores akan TERHAPUS PERMANEN.`)) {
+						await deleteGame(gameId)
+					}
+				}
+			})
+
+			boardsList.addEventListener('click', async (event) => {
+				const button = event.target.closest('button[data-action]')
+				if (!button) return
+				const action = button.dataset.action
+				const boardId = button.dataset.boardId
+				const boardName = button.dataset.boardName
+
+				if (action === 'delete-board' && boardId) {
+					if (confirm(`⚠ PERHATIAN: Hapus board "${boardName}"?\nSeluruh data skor di board ini akan TERHAPUS PERMANEN.`)) {
+						await deleteBoard(boardId)
+					}
+				}
+			})
+
+			// Event Listeners (Forms)
+			createGameBtn.addEventListener('click', async () => {
+				const name = gameNameInput.value.trim()
+				if (!name) return setOutput('Error', 'Game name is required', {})
+				
+				setBusy(createGameBtn, 'Generating...', true)
+				try {
+					const payload = await requestAdminJson('/admin/games', { method: 'POST', body: JSON.stringify({ name }) })
+					setOutput('Game Created', 'Success', payload)
+					gameNameInput.value = ''
+					
+					await loadGames({ silent: true })
+					openGameModal(payload.data.gameId) // Open modal directly after creation
+				} catch (error) {
+					setOutput('Creation Failed', getErrorMessage(error), { error: getErrorMessage(error) })
+				} finally {
+					setBusy(createGameBtn, 'Generating...', false)
+				}
+			})
+
+			createBoardBtn.addEventListener('click', async () => {
+				const apiKey = boardGameSelect.value
+				const slug = boardSlugInput.value.trim()
+				const name = boardNameInput.value.trim()
+				const orderMode = boardModeInput.value
+
+				if (!apiKey || !slug || !name) return setOutput('Error', 'Target Game, slug, and board name required', {})
+				
+				setBusy(createBoardBtn, 'Creating...', true)
+				try {
+					const payload = await requestAdminJson('/admin/boards', { method: 'POST', body: JSON.stringify({ apiKey, slug, name, orderMode }) })
+					setOutput('Board Created', 'Success', payload)
+					boardSlugInput.value = ''
+					boardNameInput.value = ''
+					
+					// If the currently viewed boards are for the same game, auto-refresh
+					const selectedOption = boardGameSelect.options[boardGameSelect.selectedIndex]
+					const gameId = selectedOption.dataset.gameId
+					
+					await loadGames({ silent: true }) // re-fetch to update board counts
+					
+					if (gameId && state.selectedGameIdForBoards !== gameId) {
+						state.selectedGameIdForBoards = gameId;
+						viewBoardsGameSelect.value = gameId;
+						localStorage.setItem('leaderboard-selected-game-id', gameId);
+						await loadBoards(gameId, { silent: true });
+					}
+				} catch (error) {
+					setOutput('Creation Failed', getErrorMessage(error), { error: getErrorMessage(error) })
+				} finally {
+					setBusy(createBoardBtn, 'Creating...', false)
+				}
+			})
+
+			// Initial state UI rendering
+			updateMetrics()
+			gamesList.innerHTML = getEmptyStateHtml('Click "Load Data" after entering your Admin Secret.')
+			boardsList.innerHTML = getEmptyStateHtml('Awaiting data load...')
+		</script>
 	</body>
 </html>
